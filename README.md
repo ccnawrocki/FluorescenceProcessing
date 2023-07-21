@@ -23,6 +23,4 @@ This is because the macros require you to specify which channel number each colo
 For analysis, you must choose a folder where analysis files will be sent. What works best is to create a folder called "Analysis-Files" within the folder where all of your images are kept. Within your analysis folder, you must create a Segmentations folder before you start the pipeline.
 
 This project was developed by Cole Nawrocki. Here is Cole's contact info: 
-	cole.nawrocki@gmail.com
-	ccn7wn@virginia.edu
- 
+Emails: cole.nawrocki@gmail.com, ccn7wn@virginia.edu
