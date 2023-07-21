@@ -1,0 +1,453 @@
+---
+title: "multiple_channels_of_interest_workflow"
+author: "Cole Nawrocki"
+date: "2023-07-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+library(readr)
+library(tidyverse)
+library(BiocManager)
+library(magick)
+library(gridExtra)
+library(parallel)
+```
+
+### Setup
+#### Variables
+These are the only variables you will have to change when running the workflow.
+
+```{r}
+project_type <- "" ## "3D" or "2D"
+dir <- "" ## directory of the project or day in which image files reside
+analysis_dir <- "" ## directory where analysis outputs will be sent
+downloads_directory <- "" ## your downloads directory
+im_ext <- ".tif" ## image extensions (usually ".tif")
+nuc_channel <- "DAPI" ## nuclei channel (usually "DAPI")
+cyt_channel <- "" ## cytoplasm channel
+cyt_color <- "" ## cytoplasm color
+channels_of_interest <- c() ## set the name of each to its color (e.g. "green" = "FITC")
+k_neighbors <- 5 ## Number of nearest neighbors to use for classification of cells.
+                 ## Must be odd. Usually is set to 3 or 5. 
+```
+
+#### Functions
+
+```{r}
+# Implements binary k-nearest-neighbors classification for all of the cells in 
+# a measurements data frame.
+KNN_annotate <- function(df,chan_oi,k,features) {
+  
+  im_name <- strsplit(df$Label[1],split = im_ext)[[1]][1]
+  im_name <- substr(im_name,4,nchar(im_name))
+  
+  t_set <- read_csv(paste(analysis_dir,"/",im_name,"_training_set.csv",sep = ""),
+                    show_col_types = F)
+  training.indices <- t_set$ROI.indices
+
+  if (training.indices[1] == paste("All cells are ",chan_oi,"+",sep = "")) {
+    df$CellType <- paste(chan_oi,"+",sep = "")
+  }
+  if (training.indices[1] == paste("All cells are ",chan_oi,"-",sep = "")) {
+    df$CellType <- "normal"
+  }
+  if (length(training.indices) > 1) {
+    training_data <- df[training.indices,]
+
+    find_distance <- function(v1,v2) {
+      return((sum((v1-v2)**2))**0.5)
+    }
+
+    get_distances <- function(df_row,feats,train.data) {
+      return(apply(train.data[,feats],1,find_distance,
+                  as.numeric(df_row[feats])))
+    }
+    all_neighbors <- apply(df,1,get_distances,features,training_data)
+    get_annotation <- function(mat_col,train.inds,t.set,k,chan) {
+        names(mat_col) <- train.inds
+        in_order <- sort(mat_col,decreasing = F)
+        top_k <- in_order[1:k]
+        top_k_annotations <- t.set[t.set$ROI.indices %in% names(top_k),]$cell.type
+        if (length(grep(chan,top_k_annotations)) >
+            length(grep("normal",top_k_annotations))) {
+          anno <- paste(chan,"+",sep = "")
+          return(anno)
+        }
+        if (length(grep(chan,top_k_annotations)) <
+            length(grep("normal",top_k_annotations))) {
+          anno <- "normal"
+          return(anno)
+        }
+    }
+
+    annotations <- apply(all_neighbors,2,get_annotation,training.indices,t_set,k,chan_oi)
+    df$CellType <- annotations
+    df$CellType[training.indices] <- t_set$cell.type
+  }
+  idx <- which(df$CellType != "normal")
+  df$index <- df$...1-1
+  write.table(df[idx,"index"],
+              file = paste(analysis_dir,"/",im_name,"_positive_indices.txt",
+                           sep = ""),
+              sep = ',',row.names = F,quote = F)
+  return(df)
+}
+
+# Plots views of each image in the project next to one another. Note that 
+# KNN_annotate must be run before this function in order for it to work.
+display_TSO <- function(ls,directory) {
+  
+  # Reading images.
+  tif <- image_read(paste(directory,ls[[1]],sep = '/'))
+  seg <- image_read(paste(directory,ls[[2]],sep = '/'))
+  over <- image_read(paste(directory,ls[[3]],sep = '/'))
+  
+  # Forming plots.
+  tif_plot <- image_ggplot(tif) +
+    labs(title = gsub(im_ext,"",ls[[1]])) +
+    theme(plot.title = element_text(size=10))
+  seg_plot <- image_ggplot(seg) +
+    labs(title = "+ Segmentation") +
+    theme(plot.title = element_text(size=10))
+  over_plot <- image_ggplot(over) +
+    labs(title = "+ Cell Type Overlay") +
+    theme(plot.title = element_text(size=10))
+  
+  # Combining and displaying plots.
+  grid.arrange(tif_plot,seg_plot,over_plot,ncol=3)
+}
+
+# Plots exploratory histograms for a variables of interest. Note that 
+# KNN_annotate must be run before this function in order for it to work.  
+stat_hist_explore <- function(df,channel,column) {
+  
+  im_name <- strsplit(df$Label[1],split = im_ext)[[1]][1]
+  im_name <- substr(im_name,4,nchar(im_name))
+  im_name <- gsub(paste("_",nuc_channel,"_",cyt_channel,"_",channel,sep = ""),"",im_name)
+  
+  channel_num <- which(channels_of_interest == channel)
+  myCols <- c(names(channels_of_interest)[channel_num],cyt_color)
+  
+  if (length(unique(df$CellType)) == 1) {
+    p <- ggplot(data = df,aes(x=get(column))) + 
+      geom_histogram(aes(x=get(column),fill=CellType), 
+                    position = "identity",alpha = 0.5) +
+      scale_fill_manual(values=c("black")) +
+      labs(title = im_name) + xlab(label = column) + 
+      theme(title = element_text(size = 10),legend.title = element_text(size = 5), 
+            legend.text = element_text(size = 3),
+           axis.text.x = element_text(size = 3,angle = 30))
+    return(p)
+  }  
+  if (length(unique(df$CellType)) > 1) {
+    p <- ggplot(data = df,aes(x=get(column))) + 
+      geom_histogram(aes(x=get(column),fill=CellType), 
+                    position = "identity",alpha = 0.5) + 
+      scale_fill_manual(values=c(myCols)) +
+      labs(title = im_name) + xlab(label = column) + 
+      theme(title = element_text(size = 10),legend.title = element_text(size = 5), 
+            legend.text = element_text(size = 3),
+           axis.text.x = element_text(size = 3,angle = 30))
+    return(p)
+  }
+}
+```
+
+### Running the ImageJ Pipeline
+I have completed all necessary macros (they may require a couple small improvements down the road), and I have made them reusable for any set of fluorescent channels. A nuclei channel and a cytoplasm channel are the only requirements, but they can be set to any channels desired. 
+
+Download FIJI here: https://fiji.sc/
+
+Download the macros here: https://tinglab.s3.amazonaws.com/ImageCombine.ijm, https://tinglab.s3.amazonaws.com/ChannelMeasure.ijm, https://tinglab.s3.amazonaws.com/ROIAnnotationOverlay.ijm
+
+Once these items have been downloaded, you can run each macro by executing the command line calls in this notebook.
+
+```{r}
+# First, output a text file with all of the file names for the slides. The 
+# ImageJ pipeline can work with this list of files.
+orginal_files <- list.files(path = dir, pattern = im_ext)
+slide_names_df <- data.frame("image.name"=gsub(im_ext,"",orginal_files))
+write.table(slide_names_df, file = paste(dir,"image_names.txt",sep = "/"), 
+            sep = ",", row.names = F, quote = F)
+```
+
+#### Step 1: Run the ImageCombine Macro
+Run the line below to open a terminal. 
+
+```{bash eval=FALSE, include=TRUE}
+open -a Terminal
+```
+
+Run the following line in the terminal.
+
+```{r}
+print(paste("open ",'"',downloads_directory,"/ImageCombine.ijm",'"'," -a Fiji",sep = ""),quote = F)
+```
+
+#### Step 2: Run Cellpose and Organize Results for Use in ImageJ
+Running this application will give us cell segmentation for each slide that can be opened in ImageJ. This can be done most easily and efficiently from the command line. 
+
+First, install cellpose following the directions here: https://cellpose.readthedocs.io/en/latest/installation.html. For my M1 mac, I had trouble with this installation, but I found a solution here: https://github.com/MouseLand/cellpose/issues/719.
+
+Second, install the segmentation models that I trained here: https://tinglab.s3.amazonaws.com/2D_segmentation_model, https://tinglab.s3.amazonaws.com/3D_segmentation_model. Just let them remain in your downloads folder.
+
+Run the line below to open a terminal.
+
+```{bash eval=FALSE, include=TRUE}
+open -a Terminal --fresh
+```
+
+Run the following lines in the terminal. This will run cellpose for all images, using my trained model. If you want to train your own model, refer to page 8 of this page: https://cellpose.readthedocs.io/_/downloads/en/latest/pdf/. Of course, this must be done by manually using the cellpose GUI. To do so, after activating the cellpose conda environment, run `cellpose` in the command line, then use the GUI.
+
+```{r}
+print("$ conda activate cellpose",quote = F)
+print(paste("$ python -m cellpose --dir ",'"',analysis_dir,"/Segmentations",'"'," --gpu_device mps --use_gpu --verbose --chan 1 --chan2 3 --pretrained_model ",'"',downloads_directory,"/",project_type,"_segmentation_model",'"', " --diameter 0 --flow_threshold 0.4 --cellprob_threshold 0 --save_rois --no_npy",sep=""),quote = F)
+```
+
+I originally had been using the "cyto" model and had been setting the diameter to 40, which worked. However, the custom model performs much more accurately. I would still recommend looking at a few of the segmentations manually. Sometimes, you may want to redo a couple of them manually, specifying your own parameters and making adjustments. To do so, after activating the cellpose conda environment, run `cellpose` in the command line, then use the GUI.
+
+Now, we have cell "ROIs" saved in our Segmentations folder. We can extract their names, as well as the names of the other files produced by our pipeline so far and use them for the final step of our pipeline.
+
+```{r}
+# Setting up files for the next step of the ImageJ pipeline.
+channels_list <- list()
+for (channel in channels_of_interest) {
+  channel_files <- list.files(path = paste(dir,"Analysis-Files",sep = "/"),
+                              pattern = paste(channel,im_ext,sep = ""))
+  channels_list[[channel]] <- list()
+  channels_list[[channel]][["files"]] <- channel_files
+  channels_list[[channel]][["rois"]] <- gsub(paste("_",channel,im_ext,sep = ""),
+                                             "_rois.zip",channel_files)
+  channel_df <- data.frame("channel.file.name"=gsub(paste("_",nuc_channel,"_",
+                                                          cyt_channel,"_",
+                                                          channel,im_ext,
+                                                          sep = ""),
+                                                    "",
+                                                    channels_list[[channel]][["files"]]),
+                           "all.channels.present"=paste("_",nuc_channel,"_",
+                                                    cyt_channel,"_",channel,
+                                                    sep = ""),
+                           "nuc.cyt.channels"=paste("_",nuc_channel,"_",
+                                                    cyt_channel,sep = ""))
+                          
+  write.csv(channel_df, file = paste(analysis_dir,"/",
+                                       channel,"_files.csv",sep = ""),
+            row.names = F, quote = F)
+  
+  rois_df <- data.frame("rois.file.name"=channels_list[[channel]][["rois"]])
+  
+  write.table(rois_df, file = paste(analysis_dir,"/Segmentations/",channel,"_",
+                                    "rois_files.txt",
+                                  sep = ""),sep = ",",row.names = F, quote = F)
+}
+```
+
+### Step 3: Run the ChannelMeasure Macro and Organize Results for Future Use
+Once you have Fiji and the macro installed, run the following line to open a terminal:
+
+```{bash eval=FALSE, include=TRUE}
+open -a Terminal --fresh
+```
+
+Now, run the following in the terminal to run the macro. Run it for all channels of interest. For example, if you have 2 channels of interest, run it twice. Each time, specify a separate channel of interest.
+
+```{r}
+print(paste("open ",'"',downloads_directory,"/ChannelMeasure.ijm",'"'," -a Fiji",sep = ""),quote = F)
+```
+
+Now we can utilize the measurements for each ROI on each segmented slide to define which cells will be annotated. We will overlay the annotations on top of the slides in the next step. We will write a function that will use the measurement data to annotate each cell as a specified type or not. See the function definition at the top of this document. Then, we can apply the function to every slide in our project. 
+
+As of now, in order to be considered a "channel-name+" cell, it must be classified as one with binary k-nearest-neighbors classification. A training set is obtained for each image during running of the ChannelMeasure macro. The accuracy of this classifier is yet to be determined. We will start with using Mean intensity values in a cell as the only feature that plays into this classification.
+
+Below, we begin analysis for the first channel of interest. Hence, we must specify `channel_of_interest[1]` throughout our code.
+
+```{r}
+# We will put all of the measurement data in a list.
+measure_files <- list.files(path = paste(dir,"Analysis-Files",sep = '/'),
+                            pattern = paste(channels_of_interest[1]
+                                            ,"_Measurements.csv",sep = ""))
+data_list <- list()
+for (file in measure_files) {
+  foi <- read_csv(paste(dir,"Analysis-Files",file,sep = '/')) %>%  na.omit(foi)
+  data_list[[file]] <- foi
+}
+
+data_list <- mclapply(data_list,KNN_annotate,channels_of_interest[1],k_neighbors,c("Mean"))
+```
+
+### Step 4: Run the ROIAnnotationOverlay Macro
+Once you have Fiji and the macro installed, run the following line to open a terminal:
+
+```{bash eval=FALSE, include=TRUE}
+open -a Terminal --fresh
+```
+
+Now, run the following in the terminal to run the macro. Just run it for whichever channel of interest you are currently working with. 
+
+```{r}
+print(paste("open ",'"',downloads_directory,"/ROIAnnotationOverlay.ijm",'"'," -a Fiji",sep = ""),quote = F)
+```
+
+## Channel of Interest 1
+### Checking the Cell Anotation Accuracy
+We will check by plotting the images of the slides, the segmentation, and the annotation overlay side by side. We will do this with the second function defined at the top of this document. We can apply that function to all the list of all the slides from the project.
+
+```{r fig.height=4, fig.width=12, message=FALSE, warning=FALSE}
+# First, form the list of all of the slides. We need the tif file, the 
+# segmentation file, and the overlay file for each slide.
+n_im <- length(measure_files)
+file_names <- gsub(paste("_",channels_of_interest[1],"_Measurements.csv",sep = ""),
+                   "",measure_files)
+
+image_list <- list()
+for (name in file_names) {
+  image_list[[name]] <- list()
+}
+
+overlay_files <- list.files(path = analysis_dir, 
+                            pattern = paste(channels_of_interest[1], 
+                                            "_positive_overlay.png",sep = ""))
+seg_files <- list.files(path = analysis_dir,
+                        pattern = paste(channels_of_interest[1],"segmentation.png",sep = "_"))
+tif_files <- list.files(path = analysis_dir,
+                        pattern = paste(channels_of_interest[1],
+                                        im_ext,sep = ""))
+
+for (i in 1:n_im) {
+  image_list[[i]][1] <- tif_files[i]
+  image_list[[i]][2] <- seg_files[i]
+  image_list[[i]][3] <- overlay_files[i]
+}
+
+# Apply the function.
+image_grids <- lapply(image_list,display_TSO,analysis_dir)
+```
+
+### Exploratory Analysis for Each Image 
+We can now parse through `exploratory_list` by which statistic we want to see exploratory data analysis for. Plots for all slides are present.
+
+First, we set up all our plots. 
+
+```{r}
+exploratory_list <- list()
+for (column in c("Area","Mean","StdDev","Mode","Min","Max","Perim.","Major",
+                 "Minor","Angle","Circ.","Feret","Median","Skew","Kurt",
+                 "FeretX","FeretY","FeretAngle","MinFeret","AR","Round",
+                 "Solidity")) {
+   exploratory_list[[column]] <- mclapply(data_list,stat_hist_explore,channels_of_interest[1],column)
+}
+```
+
+Next, we print our plots in an organized way. Use the following chunk to add any further statistical analysis that you would like to perform for the first channel of interest.
+
+```{r fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
+for (column in c("Area","Mean","StdDev","Mode","Min","Max","Perim.","Major",
+                 "Minor","Angle","Circ.","Feret","Median","Skew","Kurt",
+                 "FeretX","FeretY","FeretAngle","MinFeret","AR","Round",
+                 "Solidity")) {
+  print(column)
+  args.list <- c(exploratory_list[[column]],list(nrow=5,ncol=4))
+  do.call(grid.arrange, args.list)
+}
+
+for (image in names(data_list)) {
+  print(gsub("_Measurements.csv","",image))
+  pairs(data_list[[image]][,c(3,4,13,14,15,16,17,18,24,26,27,28)])
+}
+```
+
+## Channel of Interest 2
+Note that for the following steps we have to change all instances of `channels_of_interest[1]` to `channels_of_interest[2]` in order to be looking at the correct channel.
+
+Note that as the code exists here, the variable used for analyzing the first channel of interest will be overwritten. So, if you plan to use this workflow dynamically and go back to earlier channels of interest, you should be sure to alter the code accordingly.
+
+```{r}
+measure_files <- list.files(path = paste(dir,"Analysis-Files",sep = '/'),
+                            pattern = paste(channels_of_interest[2] 
+                                            ,"_Measurements.csv",sep = ""))
+data_list <- list()
+for (file in measure_files) {
+  foi <- read_csv(paste(dir,"Analysis-Files",file,sep = '/')) %>%  na.omit(foi)
+  data_list[[file]] <- foi
+}
+
+data_list <- mclapply(data_list,KNN_annotate,channels_of_interest[2],k_neighbors,c("Mean"))
+```
+
+Once you have run this, run the AnnotationOverly macro again, but for your second channel of interest.
+
+### Checking the Cell Anotation Accuracy
+We will check by plotting the images of the slides, the segmentation, and the annotation overlay side by side. We will do this with the second function defined at the top of this document. We can apply that function to all the list of all the slides from the project.
+
+```{r fig.height=4, fig.width=12, message=FALSE, warning=FALSE}
+# First, form the list of all of the slides. We need the tif file, the 
+# segmentation file, and the overlay file for each slide.
+n_im <- length(measure_files)
+file_names <- gsub(paste("_",channels_of_interest[2],"_Measurements.csv",sep = ""),
+                   "",measure_files)
+
+image_list <- list()
+for (name in file_names) {
+  image_list[[name]] <- list()
+}
+
+overlay_files <- list.files(path = analysis_dir, 
+                            pattern = paste(channels_of_interest[2], 
+                                            "_positive_overlay.png",sep = ""))
+seg_files <- list.files(path = analysis_dir,
+                        pattern = paste(channels_of_interest[2],"segmentation.png",sep = "_"))
+tif_files <- list.files(path = analysis_dir,
+                        pattern = paste(channels_of_interest[2],
+                                        im_ext,sep = ""))
+
+for (i in 1:n_im) {
+  image_list[[i]][1] <- tif_files[i]
+  image_list[[i]][2] <- seg_files[i]
+  image_list[[i]][3] <- overlay_files[i]
+}
+
+# Apply the function.
+image_grids <- lapply(image_list,display_TSO,analysis_dir)
+```
+
+### Exploratory Analysis for Each Image 
+We can now parse through `exploratory_list` by which statistic we want to see exploratory data analysis for. Plots for all slides are present.
+
+First, we set up all our plots. 
+
+```{r}
+exploratory_list <- list()
+for (column in c("Area","Mean","StdDev","Mode","Min","Max","Perim.","Major",
+                 "Minor","Angle","Circ.","Feret","Median","Skew","Kurt",
+                 "FeretX","FeretY","FeretAngle","MinFeret","AR","Round",
+                 "Solidity")) {
+   exploratory_list[[column]] <- mclapply(data_list,stat_hist_explore,channels_of_interest[2],column)
+}
+```
+
+Next, we print our plots in an organized way. Use the following chunk to add any further statistical analysis that you would like to perform. 
+
+```{r fig.height=12, fig.width=12, message=FALSE, warning=FALSE}
+for (column in c("Area","Mean","StdDev","Mode","Min","Max","Perim.","Major",
+                 "Minor","Angle","Circ.","Feret","Median","Skew","Kurt",
+                 "FeretX","FeretY","FeretAngle","MinFeret","AR","Round",
+                 "Solidity")) {
+  print(column)
+  args.list <- c(exploratory_list[[column]],list(nrow=5,ncol=4))
+  do.call(grid.arrange, args.list)
+}
+
+for (image in names(data_list)) {
+  print(gsub("_Measurements.csv","",image))
+  print(pairs(data_list[[image]][,c(3,4,13,14,15,16,17,18,24,26,27,28)]))
+}
+```
+
+## Next Channel of Interest
+Continue this process (lines 361-445) for more channels of interest.
+
+This is the end of the workflow.
+
+
