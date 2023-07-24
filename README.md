@@ -1,9 +1,3 @@
-# fluorescence-processing
-A comprehensive workflow for processing and analyzing sets of fluorescent images.
-
-This project was developed by Cole Nawrocki during summer 2023. Its purpose is to streamline the processing and basic image analysis of immunofluorescence stains.
-
-The workflow utilizes Fiji, ImageJMacro, Python, Bash, and R. 
 
 ### Start Guide
 The pipeline that was developed for this project can only be run on images that have a cytoplasm channel included because this channel is required for cell segmentation.
