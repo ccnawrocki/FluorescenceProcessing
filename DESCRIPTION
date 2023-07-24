@@ -1,0 +1,11 @@
+Package: FluorescenceProcessing
+Title: A Comprehensive Workflow for Processing and Analyzing Sets of Fluorescent Images.
+Version: 1.0
+Authors@R: 
+    person("Cole", "Nawrocki", , "ccnawrocki@mgb.org", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-7776-2095"))
+Description: This version includes three functions, KNN_annotate, display_TSO, and stat_hist_explore.
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.2.3
