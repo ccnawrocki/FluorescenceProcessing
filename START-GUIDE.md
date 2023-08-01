@@ -1,7 +1,7 @@
 # Start Guide
 The pipeline that was developed for this project can only be run on images that have a cytoplasm channel included because this channel is required for cell segmentation.
 
-The channels can be saved with the Nikon microscope named Otto in any order. However, it will save you loads of time if you save them in the following order:
+The channels can be saved with a fluorescent microscope in any order. However, it will save you loads of time if you save them in the following order:
 
 	1) Red
 	2) Green
