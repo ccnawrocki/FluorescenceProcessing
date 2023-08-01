@@ -14,3 +14,9 @@ The channels can be saved with the Nikon microscope named Otto in any order. How
 This is because the macros require you to specify which channel number each color is. However, the default number for each color is as shown above.
 	
 For analysis, you must choose a folder where analysis files will be sent. What works best is to create a folder called "Analysis-Files" within the folder where all of your images are kept. Within your analysis folder, you must create a Segmentations folder before you start the pipeline.
+
+To download a library of projects for which this pipeline has been run, open your terminal and run the following: 
+```
+wget -O <full-destination-directory-path/library-name> https://tinglab.s3.amazonaws.com/FluorescenceProcessing/library/
+```
+This library is ~2 GB.
