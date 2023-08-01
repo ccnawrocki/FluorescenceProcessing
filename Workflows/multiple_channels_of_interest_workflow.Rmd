@@ -191,7 +191,7 @@ Running this application will give us cell segmentation for each slide that can 
 
 First, install cellpose following the directions here: https://cellpose.readthedocs.io/en/latest/installation.html. For my M1 mac, I had trouble with this installation, but I found a solution here: https://github.com/MouseLand/cellpose/issues/719.
 
-Second, install the segmentation models that I trained here: https://tinglab.s3.amazonaws.com/2D_segmentation_model, https://tinglab.s3.amazonaws.com/3D_segmentation_model. Just let them remain in your downloads folder.
+Second, install the segmentation models that I trained here: https://tinglab.s3.amazonaws.com/FluorescenceProcessing/2D_segmentation_model, https://tinglab.s3.amazonaws.com/FluorescenceProcessing/3D_segmentation_model. Just let them remain in your downloads folder.
 
 Run the line below to open a terminal.
 
