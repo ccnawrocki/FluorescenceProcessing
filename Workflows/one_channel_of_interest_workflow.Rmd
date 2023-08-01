@@ -160,7 +160,7 @@ I have completed all necessary macros (they may require a couple small improveme
 
 Download FIJI here: https://fiji.sc/
 
-Download the macros here: https://tinglab.s3.amazonaws.com/ImageCombine.ijm, https://tinglab.s3.amazonaws.com/ChannelMeasure.ijm, https://tinglab.s3.amazonaws.com/ROIAnnotationOverlay.ijm
+Download the macros here: https://tinglab.s3.amazonaws.com/FluorescenceProcessing/ImageCombine.ijm, https://tinglab.s3.amazonaws.com/FluorescenceProcessing/ChannelMeasure.ijm, https://tinglab.s3.amazonaws.com/FluorescenceProcessing/ROIAnnotationOverlay.ijm
 
 Once these items have been downloaded, you can run each macro by executing the command line calls in this notebook.
 
