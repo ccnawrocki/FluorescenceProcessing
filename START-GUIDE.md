@@ -27,4 +27,4 @@ To download a video recording of an example walkthrough, open your terminal and 
 ```
 wget -O <full-destination-directory-path/file-name> https://tinglab.s3.amazonaws.com/FluorescenceProcessing/Example-Walkthrough.mp4
 ```
-This video is ~___ MB.
+This video is ~100 MB.
