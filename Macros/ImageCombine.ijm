@@ -14,12 +14,16 @@ Dialog.addString("Project Directory:", "");
 Dialog.addString("Analysis Directory:", "");
 Dialog.addString("Image Extensions:", ".tif");
 Dialog.addChoice("Do quickly?", newArray("N","Y"));
+Dialog.addChoice("Scale bar?", newArray("Y","N"));
+Dialog.addRadioButtonGroup("Units:", newArray("pixels","µm"), 1, 2, "pixels");
 Dialog.show();
 	
 dir = Dialog.getString();
 out = Dialog.getString();
 ext = Dialog.getString();
 quick = Dialog.getChoice();
+scalebar = Dialog.getChoice();
+units = Dialog.getRadioButton();
 
 if (quick == "Y"){
 	setBatchMode(true);
@@ -133,7 +137,7 @@ for (i=0; i<im_array.length; i++) {
 		run("Enhance Contrast", "saturated=0.35");
 		run("Enhance Contrast", "saturated=0.35");
 	}
-	else {
+	if (quick == "N") {
 		run("Brightness/Contrast...");
 		waitForUser("adjust "+nuc_chan+" brightness and contrast (remember to click reset)");
 	}
@@ -145,7 +149,7 @@ for (i=0; i<im_array.length; i++) {
 		run("Enhance Contrast", "saturated=0.35");
 		run("Enhance Contrast", "saturated=0.35");
 	}
-	else {
+	if (quick == "N") {
 		run("Brightness/Contrast...");
 		waitForUser("adjust "+cyt_chan+" brightness and contrast (remember to click reset)");
 	}
@@ -163,7 +167,7 @@ for (i=0; i<im_array.length; i++) {
 			run("Enhance Contrast", "saturated=0.35");
 			run("Enhance Contrast", "saturated=0.35");
 		}
-		else {
+		if (quick == "N") {
 			run("Brightness/Contrast...");
 			waitForUser("adjust "+other_chan_array[b]+" brightness and contrast (remember to click reset)");
 		}
@@ -175,6 +179,14 @@ for (i=0; i<im_array.length; i++) {
 	all_chans_command = all_chans_command+" "+"create keep";
 	run("Merge Channels...", all_chans_command);
 	run("Stack to RGB");
+	if (scalebar == "Y") {
+		if (units == "pixels") {
+			run("Scale Bar...", "width=100 height=100 horizontal overlay");
+		}
+		if (units == "µm") {
+			run("Scale Bar...", "width=25 height=100 horizontal overlay");
+		}
+	}
 	saveAs("Tiff", out+"/"+im+"_all_channels"+ext);
 	close("*");
 }		

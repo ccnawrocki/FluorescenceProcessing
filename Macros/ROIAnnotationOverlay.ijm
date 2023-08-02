@@ -9,11 +9,15 @@ Dialog.create("Setup Images");
 Dialog.addString("Analysis Directory:", "");
 Dialog.addString("Image Extensions:", ".tif");
 Dialog.addString("Channel of Interest:","")
+Dialog.addChoice("Scale bar?", newArray("Y","N"));
+Dialog.addRadioButtonGroup("Units:", newArray("pixels","µm"), 1, 2, "pixels");
 Dialog.show();
 	
 dir = Dialog.getString();
 ext = Dialog.getString();
 chan = Dialog.getString();
+scalebar = Dialog.getChoice();
+units = Dialog.getRadioButton();
 
 Dialog.create("Color Customization");
 colors = newArray("red","green","blue","gray","cyan","magenta","yellow");
@@ -40,6 +44,14 @@ for (i=0; i<im_array.length; i++) {
 	ROI_indices = im+"_positive_indices";
 	open(dir+"/"+im+ext);
 	run("Flatten");
+	if (scalebar == "Y") {
+		if (units == "pixels") {
+			run("Scale Bar...", "width=100 height=100 horizontal overlay");
+		}
+		if (units == "µm") {
+			run("Scale Bar...", "width=25 height=100 horizontal overlay");
+		}
+	}
 	saveAs("Tiff", dir+"/"+im+ext);
 	close();
 	roiManager("open", dir+"/Segmentations/"+ROIs);
@@ -61,6 +73,14 @@ for (i=0; i<im_array.length; i++) {
 	roiManager("deselect"); 
 	selectWindow(im+ext);
 	run("Flatten");
+	if (scalebar == "Y") {
+		if (units == "pixels") {
+			run("Scale Bar...", "width=100 height=100 horizontal overlay");
+		}
+		if (units == "µm") {
+			run("Scale Bar...", "width=25 height=100 horizontal overlay");
+		}
+	}
 	saveAs("PNG",dir+"/"+im+"_positive_overlay.png");
 	
 	close("*");
@@ -72,6 +92,14 @@ for (i=0; i<im_array.length; i++) {
 	roiManager("open", dir+"/Segmentations/"+ROIs);
 	roiManager("show all");
 	run("Flatten");
+	if (scalebar == "Y") {
+		if (units == "pixels") {
+			run("Scale Bar...", "width=100 height=100 horizontal overlay");
+		}
+		if (units == "µm") {
+			run("Scale Bar...", "width=25 height=100 horizontal overlay");
+		}
+	}
 	saveAs("PNG",dir+"/"+im+"_segmentation.png");
 	close("*");
 	close("ROI Manager");
