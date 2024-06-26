@@ -20,8 +20,5 @@ Download and open the appropriate workflow and follow the extensive directions.
 To download a library of projects for which this pipeline has been run, click [here](https://myuva-my.sharepoint.com/:f:/r/personal/ccn7wn_virginia_edu/Documents/WORK/Ting-Lab/Summer%202023/Microscopy/library?csf=1&web=1&e=TT6l8r).
 This library is ~2 GB.
 
-To download a video recording of an example walkthrough, open your terminal and run the following:
-```
-wget -O <full-destination-directory-path/file-name> https://tinglab.s3.amazonaws.com/FluorescenceProcessing/Example-Walkthrough.mp4
-```
+To download a video recording of an example walkthrough, click [here](https://myuva-my.sharepoint.com/:v:/r/personal/ccn7wn_virginia_edu/Documents/WORK/Ting-Lab/Summer%202023/Microscopy/Example-Walkthrough.mp4?csf=1&web=1&nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=bKmKFQ).
 This video is ~300 MB.
