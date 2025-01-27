@@ -2,15 +2,15 @@
 A comprehensive workflow for processing and analyzing sets of fluorescent images. The workflow utilizes `Fiji`, `ImageJMacro`, `Python`, `Bash`, and `R`. Here is an example of what this workflow does: 
 1. Segment an image of cells, using `cellpose`.
    
-   ![HHSEC_10X_1_DAPI_TxRed_FITC_segmentation](https://github.com/user-attachments/assets/7aaadb59-f872-4fd1-b57f-7905b3344c4f){width=50%}
+   ![HHSEC_10X_1_DAPI_TxRed_FITC_segmentation](https://github.com/user-attachments/assets/7aaadb59-f872-4fd1-b57f-7905b3344c4f)
    
 2. Train and implement a KNN classification model for identifying cells of interest, based on a marker's IF signal.
    
-   ![HHSEC_10X_1_DAPI_TxRed_FITC_positive_overlay](https://github.com/user-attachments/assets/7820e8df-fd15-4527-8a6f-e4b34de828a5){width=50%}
+   ![HHSEC_10X_1_DAPI_TxRed_FITC_positive_overlay](https://github.com/user-attachments/assets/7820e8df-fd15-4527-8a6f-e4b34de828a5)
    
 3. Produce data for downstream Statistical analysis.
    
-   ![HHSEC_10X_1_ex_scatter_matrix](https://github.com/user-attachments/assets/7044718b-3de7-4c17-8907-9c20877c48a9){width=50%}
+   ![HHSEC_10X_1_ex_scatter_matrix](https://github.com/user-attachments/assets/7044718b-3de7-4c17-8907-9c20877c48a9)
    
 
 ## Disclaimer
