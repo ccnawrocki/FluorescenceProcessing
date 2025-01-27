@@ -1,13 +1,11 @@
 # FluorescenceProcessing
 A comprehensive workflow for processing and analyzing sets of fluorescent images. The workflow utilizes `Fiji`, `ImageJMacro`, `Python`, `Bash`, and `R`. Here is an example of what this workflow does: 
 1. Segment an image of cells, using `cellpose`.
-   
-2. Train and implement a KNN classification model for identifying tumor cells, based on a marker's IF signal.
-   
-3. Vizualize cells of interest.
-   
-4. Produce data for downstream Statistical analysis.
-   
+   ![HHSEC_10X_1_DAPI_TxRed_FITC_segmentation](https://github.com/user-attachments/assets/7aaadb59-f872-4fd1-b57f-7905b3344c4f)
+2. Train and implement a KNN classification model for identifying cells of interest, based on a marker's IF signal.
+   ![HHSEC_10X_1_DAPI_TxRed_FITC_positive_overlay](https://github.com/user-attachments/assets/7820e8df-fd15-4527-8a6f-e4b34de828a5)
+3. Produce data for downstream Statistical analysis.
+   ![HHSEC_10X_1_ex_scatter_matrix](https://github.com/user-attachments/assets/7044718b-3de7-4c17-8907-9c20877c48a9)
 
 ## Disclaimer
 This R package and repository was a project that I completed during my __summer internship__ in the Ting Lab at the Massachusetts General Hospital Center for Cancer Research over the course of summer 2023. The project's purpose was to streamline the processing and basic image analysis of immunofluorescence (IF) stains. This repository is __no longer updated__, and it is __not representative__ of best practices that I use in my current workflows for completing this same task. The project was an opportunity for me to learn about image analysis and to practice applying Statistics to imaging data.   
